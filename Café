@@ -1,0 +1,85 @@
+-- [[ Brookhaven Admin v2 | Jacinto Edition ]]
+if game.Players.LocalPlayer.UserId ~= 10473082443 then return end
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+
+local Window = WindUI:CreateWindow({
+    Title = "Admin Panel",
+    Icon = "terminal",
+    Author = "by Jacinto",
+    Theme = "Dark"
+})
+
+local TabCmd = Window:Tab({ Title = "Comandos", Icon = "terminal" })
+
+local targetName = ""
+
+TabCmd:Input({
+    Title = "Alvo",
+    Desc = "Nome do jogador para punir",
+    Callback = function(t) targetName = t end
+})
+
+-- FUNÇÃO DE FLING (A única que funciona em quem NÃO tem script)
+local function PowerFling(target)
+    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+    local trp = target.Character:FindFirstChild("HumanoidRootPart")
+    
+    if hrp and trp then
+        local oldPos = hrp.CFrame
+        WindUI:Notify({Title = "Ataque", Content = "Lançando " .. target.Name .. " para o espaço!"})
+        
+        -- O truque do Delta: Velocidade angular insana
+        local bf = Instance.new("BodyAngularVelocity", hrp)
+        bf.AngularVelocity = Vector3.new(99999, 99999, 99999)
+        bf.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        
+        local timer = 0
+        while timer < 50 do -- 5 segundos de ataque
+            hrp.CFrame = trp.CFrame
+            wait()
+            timer = timer + 1
+        end
+        
+        bf:Destroy()
+        hrp.CFrame = oldPos
+        hrp.Velocity = Vector3.new(0,0,0)
+    end
+end
+
+TabCmd:Button({
+    Title = ";Fling / ;Kill",
+    Desc = "Ataque físico (Funciona em todos)",
+    Callback = function()
+        for _, v in pairs(Players:GetPlayers()) do
+            if v.Name:lower():find(targetName:lower()) and v ~= lp then
+                PowerFling(v)
+            end
+        end
+    end
+})
+
+TabCmd:Button({
+    Title = ";Verifique",
+    Desc = "Puxa infos do alvo",
+    Callback = function()
+        for _, v in pairs(Players:GetPlayers()) do
+            if v.Name:lower():find(targetName:lower()) then
+                WindUI:Notify({Title = "Info", Content = "Nick: "..v.Name.."\nIdade: "..v.AccountAge.." dias"})
+            end
+        end
+    end
+})
+
+-- Aba Extra para sua segurança
+local TabSelf = Window:Tab({ Title = "Self", Icon = "user" })
+TabSelf:Slider({
+    Title = "Velocidade",
+    Min = 16, Max = 200, Default = 16,
+    Callback = function(v) lp.Character.Humanoid.WalkSpeed = v end
+})
+
+WindUI:Notify({Title = "Sistema Pronto", Content = "Modo Combate Ativo no Brookhaven", Duration = 3})
