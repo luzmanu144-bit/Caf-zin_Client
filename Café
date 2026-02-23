@@ -1,85 +1,178 @@
--- [[ Brookhaven Admin v2 | Jacinto Edition ]]
-if game.Players.LocalPlayer.UserId ~= 10473082443 then return end
+-- [[ Brookhaven Admin Ultimate | Jacinto Edition 2026 ]]
+-- Trava de segurança para o Dono
+if game.Players.LocalPlayer.UserId ~= 10473082443 then 
+    warn("Acesso Negado.")
+    return 
+end
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
+-- Identificador: Marca o jogador como usuário do script
+local function MarkUser(char)
+    char:SetAttribute("JacintoAdminUser", true)
+end
+if lp.Character then MarkUser(lp.Character) end
+lp.CharacterAdded:Connect(MarkUser)
+
+-- [[ LISTENER DE SEGURANÇA COM IMUNIDADE - VERSÃO JACINTO ]]
+task.spawn(function()
+    while task.wait(0.5) do
+        -- Verifica se há sinal de kick
+        if lp.Character and lp.Character:GetAttribute("KickSignal") then
+            -- Se for você (o Dono), ele limpa o sinal e não kicka
+            if lp.UserId == 10473082443 then
+                lp.Character:SetAttribute("KickSignal", nil)
+                WindUI:Notify({Title = "Segurança", Content = "Tentativa de Kick bloqueada: Você é o Dono!"})
+            else
+                -- Se for um usuário comum do script, ele kicka
+                lp:Kick("Foste expulso por um Administrador Jacinto!")
+            end
+        end
+    end
+end)
+
+-- 1. Janela Principal
 local Window = WindUI:CreateWindow({
-    Title = "Admin Panel",
+    Title = "Brookhaven Admin",
     Icon = "terminal",
     Author = "by Jacinto",
     Theme = "Dark"
 })
 
-local TabCmd = Window:Tab({ Title = "Comandos", Icon = "terminal" })
+-- 2. Bolinha Flutuante (Sistema Mobile 2026 com UDim.new)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+ScreenGui.DisplayOrder = 999
 
-local targetName = ""
+local ToggleButton = Instance.new("ImageButton")
+ToggleButton.Parent = ScreenGui
+ToggleButton.Size = UDim2.new(0, 55, 0, 55)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.4, 0)
+ToggleButton.Image = "rbxassetid://105786596874964"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleButton.BackgroundTransparency = 0.5
+ToggleButton.Active = true
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0) -- 100% Redondo
+UICorner.Parent = ToggleButton
+
+-- Lógica de Arrastar Mobile Smooth
+local dragging, dragStart, startPos
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+    end
+end)
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - dragStart
+        ToggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+ToggleButton.MouseButton1Click:Connect(function() if not dragging then Window:Toggle() end end)
+
+-- 3. Aba Comandos
+local TabCmd = Window:Tab({ Title = "Comandos", Icon = "terminal" })
+local selectedPlayer = ""
 
 TabCmd:Input({
-    Title = "Alvo",
-    Desc = "Nome do jogador para punir",
-    Callback = function(t) targetName = t end
+    Title = "Selecionar Alvo",
+    Desc = "Nick do Alvo",
+    Callback = function(t) selectedPlayer = t end
 })
 
--- FUNÇÃO DE FLING (A única que funciona em quem NÃO tem script)
-local function PowerFling(target)
-    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
-    local trp = target.Character:FindFirstChild("HumanoidRootPart")
-    
-    if hrp and trp then
-        local oldPos = hrp.CFrame
-        WindUI:Notify({Title = "Ataque", Content = "Lançando " .. target.Name .. " para o espaço!"})
-        
-        -- O truque do Delta: Velocidade angular insana
-        local bf = Instance.new("BodyAngularVelocity", hrp)
-        bf.AngularVelocity = Vector3.new(99999, 99999, 99999)
-        bf.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        
-        local timer = 0
-        while timer < 50 do -- 5 segundos de ataque
-            hrp.CFrame = trp.CFrame
-            wait()
-            timer = timer + 1
+local function getTarget()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v.Name:lower():find(selectedPlayer:lower()) or v.DisplayName:lower():find(selectedPlayer:lower()) then
+            return v
         end
-        
-        bf:Destroy()
+    end
+    return nil
+end
+
+-- BOTOES
+TabCmd:Button({ 
+    Title = ";Verifique", 
+    Desc = "Verifica se o alvo usa o script",
+    Callback = function()
+        local t = getTarget()
+        if t and t.Character then
+            local isUser = t.Character:GetAttribute("JacintoAdminUser")
+            WindUI:Notify({
+                Title = "Scanner",
+                Content = t.Name .. (isUser and "\n✅ Usuário do Script" or "\n❌ Jogador Comum"),
+                Duration = 5
+            })
+        end
+    end
+})
+
+TabCmd:Button({ 
+    Title = ";Kick", 
+    Desc = "Expulsa apenas outros usuários do script",
+    Callback = function()
+        local t = getTarget()
+        if t and t.Character then
+            if t.Character:GetAttribute("JacintoAdminUser") then
+                t.Character:SetAttribute("KickSignal", true)
+                WindUI:Notify({Title = "Comando", Content = "Sinal enviado para " .. t.Name})
+            else
+                WindUI:Notify({Title = "Erro", Content = "Alvo não é usuário do script."})
+            end
+        end
+    end
+})
+
+-- Comandos de Fling/Kill (Universal)
+local function ModernFling(target)
+    local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
+    local thrp = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and thrp then
+        local oldPos = hrp.CFrame
+        local bamv = Instance.new("BodyAngularVelocity", hrp)
+        bamv.P = 1500
+        bamv.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bamv.AngularVelocity = Vector3.new(0, 99999, 0)
+        local timer = tick() + 1.2
+        while tick() < timer do
+            hrp.CFrame = thrp.CFrame
+            hrp.Velocity = Vector3.new(600, 600, 600)
+            task.wait()
+        end
+        bamv:Destroy()
         hrp.CFrame = oldPos
-        hrp.Velocity = Vector3.new(0,0,0)
     end
 end
 
-TabCmd:Button({
-    Title = ";Fling / ;Kill",
-    Desc = "Ataque físico (Funciona em todos)",
-    Callback = function()
-        for _, v in pairs(Players:GetPlayers()) do
-            if v.Name:lower():find(targetName:lower()) and v ~= lp then
-                PowerFling(v)
-            end
-        end
+TabCmd:Button({ Title = ";KillPlus", Callback = function()
+    local t = getTarget()
+    if t then 
+        Instance.new("Explosion", t.Character).Position = t.Character.HumanoidRootPart.Position
+        ModernFling(t) 
     end
-})
+end})
 
-TabCmd:Button({
-    Title = ";Verifique",
-    Desc = "Puxa infos do alvo",
-    Callback = function()
-        for _, v in pairs(Players:GetPlayers()) do
-            if v.Name:lower():find(targetName:lower()) then
-                WindUI:Notify({Title = "Info", Content = "Nick: "..v.Name.."\nIdade: "..v.AccountAge.." dias"})
-            end
-        end
+TabCmd:Button({ Title = ";Fling", Callback = function()
+    local t = getTarget()
+    if t then ModernFling(t) end
+end})
+
+TabCmd:Button({ Title = ";ResetKill", Callback = function()
+    local t = getTarget()
+    if t and t.Character and t.Character:GetAttribute("JacintoAdminUser") then
+        t.Character:BreakJoints()
     end
-})
+end})
 
--- Aba Extra para sua segurança
-local TabSelf = Window:Tab({ Title = "Self", Icon = "user" })
-TabSelf:Slider({
-    Title = "Velocidade",
-    Min = 16, Max = 200, Default = 16,
-    Callback = function(v) lp.Character.Humanoid.WalkSpeed = v end
-})
-
-WindUI:Notify({Title = "Sistema Pronto", Content = "Modo Combate Ativo no Brookhaven", Duration = 3})
+WindUI:Notify({Title = "Jacinto Hub", Content = "Sistema de Imunidade e Comandos Ativo!"})
